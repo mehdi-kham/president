@@ -252,6 +252,7 @@
           <div class="m-gauges">
             ${STATS.map(k => `
               <div class="m-gauge" data-stat="${k}">
+                <div class="m-label">${STAT_META[k].label}</div>
                 <div class="m-top"><span>${STAT_META[k].icon}</span><b></b></div>
                 <div class="m-bar"><div></div></div>
               </div>`).join("")}
