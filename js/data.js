@@ -32,7 +32,7 @@ const ARCHETYPES = {
     tag: "Gauche radicale",
     emoji: "✊",
     party: "L’Union Populaire",
-    plus: "Toute la jeunesse derrière lui : lycéens, étudiants, jeunes actifs, meetings géants",
+    plus: "Toute la jeunesse mobilisée : lycéens, étudiants, jeunes actifs, meetings géants",
     minus: "Clivant, ton jugé agressif, rejet des milieux économiques",
     challenge: "Transformer la ferveur de la jeunesse en bulletins sans effrayer les modérés.",
     stats: { sondages: 54, tresorerie: 45, cohesion: 64, credibilite: 40 },

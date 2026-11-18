@@ -11,6 +11,7 @@
 
   const screen = document.getElementById("screen");
   let S = null;
+  document.getElementById("notif").onclick = () => hideNotif();
 
   /* ---------------- Utilitaires ---------------- */
 
@@ -247,6 +248,19 @@
     candidateTopbar();
     screen.innerHTML = `
       <div class="game fade-in">
+        <div class="m-hud">
+          <div class="m-gauges">
+            ${STATS.map(k => `
+              <div class="m-gauge" data-stat="${k}">
+                <div class="m-top"><span>${STAT_META[k].icon}</span><b></b></div>
+                <div class="m-bar"><div></div></div>
+              </div>`).join("")}
+          </div>
+          <div class="m-row">
+            <span id="m-info"></span>
+            <button class="m-toggle" id="m-toggle">📋 Dossier</button>
+          </div>
+        </div>
         <aside class="side side-left">
           <div class="panel">
             <div class="hud-top">
@@ -286,6 +300,13 @@
           </div>
         </aside>
       </div>`;
+    const game = screen.querySelector(".game");
+    const toggle = document.getElementById("m-toggle");
+    toggle.onclick = () => {
+      const open = game.classList.toggle("panels-open");
+      toggle.textContent = open ? "✕ Retour" : "📋 Dossier";
+      window.scrollTo(0, 0);
+    };
     updateHud();
     renderFeed();
   }
@@ -315,7 +336,26 @@
         g.classList.add(deltas[k] > 0 ? "flash-up" : "flash-down");
         setTimeout(() => (d.className = "g-delta"), 1800);
       }
+      const m = screen.querySelector(`.m-gauge[data-stat="${k}"]`);
+      if (m) {
+        m.querySelector("b").textContent = v;
+        m.querySelector(".m-bar div").style.width = v + "%";
+        m.classList.toggle("danger", v <= 20);
+        if (deltas && deltas[k]) {
+          m.classList.remove("flash-up", "flash-down");
+          void m.offsetWidth;
+          m.classList.add(deltas[k] > 0 ? "flash-up" : "flash-down");
+        }
+      }
     });
+    const info = document.getElementById("m-info");
+    if (info) {
+      info.textContent = S.act === 0
+        ? `✍️ ${S.parr} / ${PARRAINAGES_REQUIS} parrainages`
+        : S.act === 1
+          ? `📊 ${votePct(S.stats.sondages).toFixed(1).replace(".", ",")} % au 1er tour`
+          : `📊 ${round2Estimate(S.stats).toFixed(1).replace(".", ",")} % au 2nd tour`;
+    }
     const chip = document.getElementById("parr-chip");
     if (chip) {
       if (S.act === 0) {
