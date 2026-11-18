@@ -320,6 +320,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   background: #0b1020; border: 1px solid var(--line);
 }
 .choice:hover .choice-key { color: white; border-color: var(--blue); }
+.choice.armed { flex-wrap: wrap; background: #1b2643; border-color: var(--blue); }
+.choice.armed::after {
+  content: "Touchez à nouveau pour confirmer";
+  flex-basis: 100%; padding-left: 34px;
+  font-size: 12px; font-weight: 700; color: #8aa4ff;
+}
 .choice.special { border-color: rgba(229, 50, 63, 0.6); background: #2a1420; }
 .choice.special .choice-key { border-color: rgba(229,50,63,0.6); color: #fb8a92; }
 .btn-next { align-self: flex-end; }
@@ -501,6 +507,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   .choice { padding: 11px 12px; gap: 10px; font-size: 14.5px; }
   .choice:hover, .choice:focus { transform: none; }
   .choice-key { width: 22px; height: 22px; }
+  .m-top .g-dot { margin-left: auto; margin-right: 6px; }
   .btn-next { align-self: stretch; }
 
   /* Résultats et fins */

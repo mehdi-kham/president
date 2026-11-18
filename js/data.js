@@ -15,20 +15,21 @@ const ARCHETYPES = {
   heritier: {
     id: "heritier",
     name: "L’Héritier", nameF: "L’Héritière",
-    tag: "Majorité sortante",
+    tag: "Majorité sortante · 10 ans au pouvoir",
     emoji: "🏛️",
     party: "L’Élan Républicain",
     plus: "Caisse de campagne pleine, soutien institutionnel",
-    minus: "Usure du pouvoir, fort rejet populaire",
-    challenge: "Se détacher du bilan du président sortant sans perdre son socle.",
-    stats: { sondages: 42, tresorerie: 80, cohesion: 62, credibilite: 65 },
+    minus: "Dix ans de pouvoir : dette record, déficit hors de contrôle, un pays qui veut tourner la page",
+    challenge: "Incarner le changement quand on est soi-même le pouvoir en place.",
+    stats: { sondages: 42, tresorerie: 78, cohesion: 60, credibilite: 54 },
     parrainages: 380,
-    mods: { sondages: { pos: 0.85 }, tresorerie: { neg: 0.8 } },
-    modsDesc: ["Gains de sondages réduits (usure du pouvoir)", "Pertes financières amorties"]
+    round2: -2,
+    mods: { sondages: { pos: 0.8 }, credibilite: { neg: 1.2 }, tresorerie: { neg: 0.8 } },
+    modsDesc: ["Gains de sondages réduits (usure du pouvoir)", "Pertes de crédibilité amplifiées (le bilan colle à la peau)", "Malus au second tour (vote dégagiste)", "Pertes financières amorties"]
   },
   tribun: {
     id: "tribun",
-    name: "Le Tribun", nameF: "La Tribune",
+    name: "Le Tribun", nameF: "La Pasionaria",
     tag: "Gauche radicale",
     emoji: "✊",
     party: "L’Union Populaire",
@@ -94,10 +95,11 @@ const ARCHETYPES = {
     plus: "Excellente crédibilité économique, rassure les marchés",
     minus: "Manque de charisme, perçu comme déconnecté",
     challenge: "Créer un lien émotionnel avec les Français face aux crises.",
-    stats: { sondages: 36, tresorerie: 62, cohesion: 62, credibilite: 76 },
+    stats: { sondages: 38, tresorerie: 62, cohesion: 60, credibilite: 70 },
     parrainages: 400,
-    mods: { sondages: { pos: 0.8 }, credibilite: { neg: 0.7 } },
-    modsDesc: ["Gains de sondages réduits (manque de charisme)", "Pertes de crédibilité amorties"]
+    round2: -2,
+    mods: { sondages: { pos: 0.75 }, credibilite: { neg: 0.9 } },
+    modsDesc: ["Gains de sondages réduits (manque de charisme)", "Pertes de crédibilité légèrement amorties", "Malus au second tour (image d’élite déconnectée)"]
   }
 };
 
@@ -116,7 +118,7 @@ const CHARACTERS = {
   vallier:   { name: "Catherine Vallier", role: "Ex-directrice générale du FMI",    color: "#334155" },
   arnoult:   { name: "Philippe Arnoult",  role: "Cercle Santé Avenir",              color: "#475569" },
   lenoir:    { name: "Thomas Lenoir",     role: "Journaliste, Le Canard enchaîné",  color: "#b45309" },
-  helene:    { name: "Hélène Marchal",    role: "Candidate éliminée (15 %)",        color: "#0e7490" },
+  helene:    { name: "Hélène Marchal",    role: s => `Candidate éliminée (${s.round1.marchal.toFixed(1).replace(".", ",")} %)`, color: "#0e7490" },
   baudoin:   { name: "Charles-Henri Baudoin", role: "Propriétaire du groupe Médiacorp", color: "#111827" }
 };
 
@@ -345,7 +347,7 @@ const ACT1 = [
       {
         text: "Je soutiens. La désobéissance civile est légitime face à l’urgence.",
         fx: { coh: 6, sond: -4, cred: -7 },
-        result: "Ta base climat jubile. Les automobilistes bloqués trois heures, eux, deviennent les héros du 20 h. « L’écologie qui emmerde les gens qui bossent », titre un hebdo.",
+        result: "Votre base climat jubile. Les automobilistes bloqués trois heures, eux, deviennent les héros du 20 h. « L’écologie qui emmerde les gens qui bossent », titre un hebdo.",
         news: "Blocage du périphérique : {nom} soutient les activistes"
       },
       {
@@ -512,8 +514,10 @@ const ACT1 = [
       },
       {
         text: "Je refuse. Garnier n’a qu’à se retirer lui-même.",
-        fx: { coh: 4, sond: -4, cred: -2 },
-        result: "Garnier vous accuse de « faire gagner les extrêmes ». Les deux campagnes continuent de se marcher dessus."
+        fx: { coh: 4, sond: -8, cred: -2 },
+        flag: "garnier_maintenu",
+        result: "Garnier vous accuse de « faire gagner les extrêmes » et maintient sa candidature. Les deux campagnes continuent de se marcher dessus.",
+        news: "Mathieu Garnier maintient sa candidature face à {nom}"
       },
       {
         text: "Je lui propose un deal : il se retire, je lui offre un grand ministère.",
@@ -616,7 +620,7 @@ const ACT2 = [
     id: "a2_morel", date: "12 mars", from: "morel",
     text: [
       "Coucou 👋 c’est Jade. Jade Morel. Oui, celle de la télé.",
-      "J’ai eu mes 500 parrainages hier, je suis à 9 % dans les sondages et j’ai pas de programme. Les gens s’en fichent, ils veulent juste quelqu’un de vrai 💅",
+      "J’ai eu mes 500 parrainages hier, je suis à 7 % dans les sondages et j’ai pas de programme. Les gens s’en fichent, ils veulent juste quelqu’un de vrai 💅",
       "Bref, je te pique des électeurs. On pourrait s’arranger, non ?"
     ],
     choices: [
@@ -693,6 +697,7 @@ const ACT2 = [
       {
         text: "Lancez-vous. Les Français jugeront une candidate sans programme.",
         fx: { sond: -2, cred: 3, integ: 2 },
+        flag: "vallier_flop",
         result: "Elle se lance. Au premier débat, une journaliste lui demande sa mesure phare : long silence. Vous n’avez rien eu à faire."
       }
     ]
@@ -1056,7 +1061,7 @@ const ACT3 = [
     id: "a3_marchal", date: "11 avr.", from: "helene",
     text: [
       "Félicitations pour votre qualification, {nom}. Sincèrement.",
-      "J’ai fait 15 %. Mes électeurs feront la différence le 24 avril.",
+      s => `J’ai fait ${s.round1.marchal.toFixed(1).replace(".", ",")} %. Mes électeurs feront la différence le 24 avril.`,
       "Mon prix est simple : Matignon. Et trois mesures de mon programme dans le vôtre."
     ],
     choices: [
@@ -1134,6 +1139,35 @@ const ACT3 = [
     ]
   },
   {
+    id: "a3_heritier", date: "17 avr.", from: "antoine", only: ["heritier"],
+    text: [
+      "Delmas a trouvé son slogan : « Dix ans, ça suffit. » Il est sur toutes les affiches depuis ce matin.",
+      "Notre dernière étude est terrible : 68 % des Français veulent l’alternance. La dette a pris 900 milliards en dix ans, le déficit dépasse 6 %, et c’est votre visage qu’ils associent à tout ça.",
+      "Il nous reste une semaine pour répondre. Une seule chance."
+    ],
+    choices: [
+      {
+        text: "Rupture totale : audit public des comptes et aucun ministre sortant dans mon gouvernement.",
+        fx: { sond: 5, coh: -12, cred: 2, integ: 2 },
+        promise: "Aucun ministre sortant au gouvernement",
+        result: "L’annonce fait l’effet d’une bombe dans votre propre camp. Trois ministres en exercice annulent leur présence à votre meeting. L’opinion, elle, se dit « surprise ».",
+        news: "{nom} promet un gouvernement sans aucun ministre sortant"
+      },
+      {
+        text: "Je défends la continuité : « L’expérience contre l’aventure. »",
+        fx: { sond: -6, coh: 6, cred: 2 },
+        result: "Votre socle se rassure, les retraités applaudissent. Mais le slogan de Delmas, lui, colle parfaitement à votre discours."
+      },
+      {
+        text: "Je m’engage solennellement à ne faire qu’un seul mandat.",
+        fx: { sond: 4, cred: -3, coh: -4 },
+        promise: "Un mandat unique, sans réélection",
+        result: "Le geste surprend. Les éditorialistes y voient un aveu : « Même le camp sortant ne croit plus à son propre bilan. »",
+        news: "{nom} promet de ne faire qu’un seul mandat"
+      }
+    ]
+  },
+  {
     id: "a3_jeunes", date: "18 avr.", from: "ines",
     text: [
       "Les instituts prévoient 45 % d’abstention chez les 18-25 ans.",
@@ -1181,7 +1215,16 @@ const ACT3 = [
         text: "Je sors enfin le dossier luxembourgeois.",
         condition: s => s.flags.has("dossier_garde"),
         fx: { sond: 10, cred: -4, integ: -15 },
+        flag: "dossier_utilise",
         result: "Delmas devient livide. Le coup est dévastateur… et vous avez renoncé à tout ce que vous défendiez jusqu’ici.",
+        news: "Coup de théâtre : {nom} accuse Delmas d’évasion fiscale en direct"
+      },
+      {
+        text: "Je sors enfin le dossier luxembourgeois.",
+        condition: s => s.flags.has("dossier_debat") && !s.flags.has("dossier_utilise"),
+        fx: { sond: 10, cred: -4, integ: -5 },
+        flag: "dossier_utilise",
+        result: "L’enveloppe kraft de Samir attendait son heure depuis un mois. Delmas devient livide. Le coup est dévastateur, et tout le monde comprend qu’il était préparé de longue date.",
         news: "Coup de théâtre : {nom} accuse Delmas d’évasion fiscale en direct"
       }
     ]
@@ -1216,6 +1259,13 @@ const ACT3 = [
         fx: { sond: -40 },
         ending: "scandale",
         result: "Vous annoncez votre retrait depuis votre QG désert. Les caméras filment des militants en larmes."
+      },
+      {
+        text: "J’assume, je rembourse chaque euro et je me mets à la disposition de la justice.",
+        condition: s => s.integ >= 40,
+        fx: { sond: -14, cred: -6, coh: -8, treso: -20, integ: 8 },
+        result: "Conférence de presse à 7 h, sans notes. Vous reconnaissez les faits, annoncez le remboursement intégral et le départ de Claire Vasseur. Les éditorialistes sont sonnés : on n’avait jamais vu ça. La campagne vacille, mais elle tient debout.",
+        news: "Financement : {nom} reconnaît les faits et rembourse"
       }
     ]
   },
@@ -1353,7 +1403,7 @@ const ENDINGS = {
     tone: "lose", emoji: "📊",
     title: "L’Effondrement",
     text: () => [
-      "Vos intentions de vote passent sous la barre des 2 %. Les médias cessent de vous inviter.",
+      "Vos intentions de vote tombent à 6 %, votre socle le plus irréductible. Les médias cessent de vous inviter.",
       "Vos alliés vous demandent publiquement de vous retirer « pour éviter l’humiliation ». Vous finissez par les écouter."
     ]
   },

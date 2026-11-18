@@ -26,12 +26,14 @@
     return e;
   }
 
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
   function fmt(str) {
     if (typeof str === "function") str = str(S);
     if (!S) return str;
     const f = S.civ === "F";
     const map = {
-      nom: S.name,
+      nom: esc(S.name),
       titre: f ? "Madame la candidate" : "Monsieur le candidat",
       cand: f ? "candidate" : "candidat",
       e: f ? "e" : "",
@@ -65,7 +67,7 @@
   let notifTimer = null;
   function notify(text) {
     const n = document.getElementById("notif");
-    document.getElementById("notif-text").textContent = text;
+    document.getElementById("notif-text").innerHTML = text;
     n.classList.add("show");
     clearTimeout(notifTimer);
     notifTimer = setTimeout(() => n.classList.remove("show"), 4200);
@@ -188,7 +190,7 @@
   }
 
   function candidateTopbar() {
-    setTopbar(`<span class="tb-emoji">${S.arch.emoji}</span><span class="tb-name">${S.name}</span><span class="tb-party">${S.arch.party}</span>`);
+    setTopbar(`<span class="tb-emoji">${S.arch.emoji}</span><span class="tb-name">${esc(S.name)}</span><span class="tb-party">${S.arch.party}</span>`);
   }
 
   /* ---------------- Partie ---------------- */
@@ -201,6 +203,7 @@
       integ: a.integ ?? 70, dette: 0, scandale: a.scandale ?? 0,
       parr: a.parrainages,
       flags: new Set(),
+      seen: new Set(),
       promises: [],
       feed: [],
       date: "",
@@ -253,7 +256,7 @@
             ${STATS.map(k => `
               <div class="m-gauge" data-stat="${k}">
                 <div class="m-label">${STAT_META[k].label}</div>
-                <div class="m-top"><span>${STAT_META[k].icon}</span><b></b></div>
+                <div class="m-top"><span>${STAT_META[k].icon}</span><i class="g-dot"></i><b></b></div>
                 <div class="m-bar"><div></div></div>
               </div>`).join("")}
           </div>
@@ -374,13 +377,19 @@
     renderDossier();
   }
 
+  function effectiveDelta(stat, raw) {
+    if (!raw) return 0;
+    const m = S.arch.mods[stat];
+    if (m) raw = raw > 0 ? raw * (m.pos ?? 1) : raw * (m.neg ?? 1);
+    return Math.round(raw);
+  }
+
   function previewChoice(fx) {
-    STATS.forEach(k => {
-      const g = screen.querySelector(`.gauge[data-stat="${k}"] .g-dot`);
-      if (!g) return;
-      const shortKey = Object.keys(KEYMAP).find(sk => KEYMAP[sk] === k);
-      const v = fx ? fx[shortKey] : 0;
-      g.className = "g-dot" + (v ? (Math.abs(v) >= 7 ? " big" : " small") : "");
+    Object.entries(KEYMAP).forEach(([short, k]) => {
+      const v = fx ? effectiveDelta(k, fx[short]) : 0;
+      screen.querySelectorAll(`[data-stat="${k}"] .g-dot`).forEach(g => {
+        g.className = "g-dot" + (v ? (Math.abs(v) >= 7 ? " big" : " small") : "");
+      });
     });
   }
 
@@ -403,10 +412,11 @@
 
   async function showEvent(ev) {
     const c = CHARACTERS[ev.from];
+    S.seen.add(ev.id);
     setDate(ev.date);
     document.getElementById("chat-head").innerHTML = `
       ${avatarHtml(c)}
-      <div><div class="ch-name">${c.name}</div><div class="ch-role">${c.role}</div></div>
+      <div><div class="ch-name">${c.name}</div><div class="ch-role">${fmt(c.role)}</div></div>
       <div class="ch-secure">🔒 chiffré</div>`;
     const chat = document.getElementById("chat");
     const choices = document.getElementById("choices");
@@ -424,6 +434,7 @@
       await sleep(220);
     }
 
+    const touch = matchMedia("(hover: none)").matches;
     ev.choices
       .filter(ch => !ch.condition || ch.condition(S))
       .forEach((ch, i) => {
@@ -432,7 +443,15 @@
         b.onmouseenter = () => previewChoice(ch.fx);
         b.onfocus = () => previewChoice(ch.fx);
         b.onmouseleave = () => previewChoice(null);
-        b.onclick = () => choose(ev, ch);
+        b.onclick = () => {
+          if (touch && !b.classList.contains("armed")) {
+            choices.querySelectorAll(".choice.armed").forEach(x => x.classList.remove("armed"));
+            b.classList.add("armed");
+            previewChoice(ch.fx);
+            return;
+          }
+          choose(ev, ch);
+        };
         choices.appendChild(b);
       });
     chat.scrollTop = chat.scrollHeight;
@@ -442,11 +461,8 @@
     const fx = ch.fx || {};
     const deltas = {};
     Object.entries(KEYMAP).forEach(([short, stat]) => {
-      let d = fx[short];
+      const d = effectiveDelta(stat, fx[short]);
       if (!d) return;
-      const m = S.arch.mods[stat];
-      if (m) d = d > 0 ? d * (m.pos ?? 1) : d * (m.neg ?? 1);
-      d = Math.round(d);
       const before = S.stats[stat];
       S.stats[stat] = clamp(before + d, 0, 100);
       deltas[stat] = S.stats[stat] - before;
@@ -513,7 +529,7 @@
       : S.history.map(h => votePct(h.stats.sondages));
     const W = 320, H = 150, P = 20;
     const [min, max] = secondTour ? [30, 70] : [0, 40];
-    const seuil = secondTour ? 50 : 18.5;
+    const seuil = secondTour ? 50 : qualifThreshold();
     const x = i => P + (pts.length === 1 ? 0 : (i * (W - 2 * P)) / (pts.length - 1));
     const y = p => H - P - ((clamp(p, min, max) - min) / (max - min)) * (H - 2 * P);
     const line = pts.map((p, i) => `${x(i)},${y(p)}`).join(" ");
@@ -524,7 +540,7 @@
     const head = secondTour
       ? `<div class="panel-title">Intentions de vote (2nd tour)</div>
          <div class="duel">
-           <div class="duel-side me"><span>${S.name}</span><b>${pct(last)}</b></div>
+           <div class="duel-side me"><span>${esc(S.name)}</span><b>${pct(last)}</b></div>
            <div class="duel-side"><span>${OPPONENT}</span><b>${pct(100 - last)}</b></div>
          </div>
          <div class="duel-bar"><div style="width:${last}%"></div><i></i></div>`
@@ -535,7 +551,7 @@
       ${head}
       <svg viewBox="0 0 ${W} ${H}" class="chart">
         <line x1="${P}" x2="${W - P}" y1="${threshold}" y2="${threshold}" class="threshold"/>
-        <text x="${W - P}" y="${threshold - 4}" class="threshold-label" text-anchor="end">${secondTour ? "majorité : 50 %" : "seuil de qualification ≈ 18,5 %"}</text>
+        <text x="${W - P}" y="${threshold - 4}" class="threshold-label" text-anchor="end">${secondTour ? "majorité : 50 %" : `seuil de qualification ≈ ${pct(seuil)}`}</text>
         <polyline points="${line}" class="poll-line"/>
         ${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p)}" r="3" class="poll-dot"/>`).join("")}
       </svg>
@@ -557,7 +573,8 @@
     if (S.flags.has("fuite")) secrets.push("Fuite anonyme sur Delmas");
     if (S.flags.has("lobby")) secrets.push("Accord avec les laboratoires");
     if (S.flags.has("baudoin")) secrets.push("Pacte avec Baudoin");
-    if (S.flags.has("dossier_garde") || S.flags.has("dossier_debat")) secrets.push("Dossier Delmas au coffre");
+    if (S.flags.has("dossier_utilise")) secrets.push("Dossier Delmas sorti en plein débat");
+    else if (S.flags.has("dossier_garde") || S.flags.has("dossier_debat")) secrets.push("Dossier Delmas au coffre");
 
     v.innerHTML = `
       <div class="panel two-col">
@@ -603,26 +620,47 @@
     document.getElementById("btn-inter").onclick = onNext;
   }
 
-  function firstRound() {
-    const you = votePct(S.stats.sondages) + rand(-1, 1);
+  /* Poids relatifs des adversaires, renormalisés sur (100 − votre score). */
+  function firstRoundField() {
     const delmasHit = S.flags.has("fuite") || S.flags.has("dossier_utilise") ? 5 : 0;
-    const base = [
+    let autres = 4 + delmasHit;
+    const field = [
       { name: OPPONENT, v: 27 - delmasHit },
-      { name: "Hélène Marchal", v: 17 + delmasHit * 0.6 },
+      { name: "Hélène Marchal", v: 17 },
       { name: "Bruno Kessler", v: 11 },
       { name: "Jade Morel", v: 7 },
-      { name: "Nadia Ferhat", v: 6 },
-      { name: "Autres candidats", v: 4 }
+      { name: "Nadia Ferhat", v: 6 }
     ];
-    if (S.flags.has("vallier_ralliee")) base[base.length - 1].v += 6;
-    else base.push({ name: "Catherine Vallier", v: 6 });
-    const total = base.reduce((a, b) => a + b.v, 0);
+    if (S.flags.has("garnier_maintenu")) field.push({ name: "Mathieu Garnier", v: 6 });
+    if (S.seen.has("a2_vallier") && !S.flags.has("vallier_ralliee")) {
+      const v = S.flags.has("vallier_flop") ? 4 : 6;
+      field.push({ name: "Catherine Vallier", v });
+      autres += 6 - v;
+    } else {
+      autres += 6;
+    }
+    field.push({ name: "Autres candidats", v: autres, other: true });
+    return field;
+  }
+
+  function qualifThreshold() {
+    const field = firstRoundField();
+    const total = field.reduce((a, c) => a + c.v, 0);
+    const second = field.filter(c => !c.other).map(c => c.v).sort((a, b) => b - a)[1];
+    return (100 * second) / (total + second);
+  }
+
+  function firstRound() {
+    const you = votePct(S.stats.sondages) + rand(-1, 1);
+    const field = firstRoundField();
+    const total = field.reduce((a, b) => a + b.v, 0);
     const k = (100 - you) / total;
-    const results = base.map(c => ({ ...c, v: c.v * k }));
+    const results = field.map(c => ({ ...c, v: c.v * k }));
     results.push({ name: S.name, v: you, me: true });
-    const ranked = results.filter(r => r.name !== "Autres candidats").sort((a, b) => b.v - a.v);
+    const ranked = results.filter(r => !r.other).sort((a, b) => b.v - a.v);
     const rank = ranked.findIndex(r => r.me) + 1;
-    S.round1 = { you, rank };
+    const marchal = results.find(r => r.name === "Hélène Marchal").v;
+    S.round1 = { you, rank, marchal };
 
     showResults(
       "10 avril 2027 · 20 h 00",
@@ -657,7 +695,7 @@
       "24 avril 2027 · 20 h 00",
       "Résultats du 2nd tour",
       [{ name: S.name, v: you, me: true }, { name: OPPONENT, v: 100 - you }].sort((a, b) => b.v - a.v),
-      won ? `${S.name} est élu${S.civ === "F" ? "e" : ""} ${S.civ === "F" ? "Présidente" : "Président"} de la République.` : `${OPPONENT} est élu Président de la République.`,
+      won ? `${esc(S.name)} est élu${S.civ === "F" ? "e" : ""} ${S.civ === "F" ? "Présidente" : "Président"} de la République.` : `${OPPONENT} est élu Président de la République.`,
       won,
       () => showEnding(ending)
     );
@@ -674,7 +712,7 @@
         <div class="results-list">
           ${rows.map(r => `
             <div class="res-row ${r.me ? "me" : ""}">
-              <div class="res-name">${r.me ? "★ " : ""}${r.name}</div>
+              <div class="res-name">${r.me ? "★ " : ""}${esc(r.name)}</div>
               <div class="res-bar"><div data-w="${(r.v / max) * 100}"></div></div>
               <div class="res-val" data-v="${r.v.toFixed(1)}">0 %</div>
             </div>`).join("")}
