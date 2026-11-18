@@ -770,14 +770,80 @@
           </div>
           ${S.promises.length ? `<ul class="list">${S.promises.map(p => `<li>🤞 ${p}</li>`).join("")}</ul>` : ""}
         </div>
+        <div class="panel share-box">
+          <div class="panel-title">Défiez vos amis</div>
+          <button class="btn btn-share" id="btn-share">📣 Partager mon résultat</button>
+          <div class="share-links">
+            <a id="share-x" target="_blank" rel="noopener">X / Twitter</a>
+            <a id="share-wa" target="_blank" rel="noopener">WhatsApp</a>
+            <a id="share-fb" target="_blank" rel="noopener">Facebook</a>
+          </div>
+        </div>
         <div class="ending-actions">
           <button class="btn btn-primary" id="btn-replay">Rejouer avec ce profil</button>
           <button class="btn btn-ghost" id="btn-new">Nouveau candidat</button>
         </div>
       </div>`;
+    setupShare(e);
     const { arch, name, civ } = S;
     document.getElementById("btn-replay").onclick = () => startGame(arch.id, name, civ);
     document.getElementById("btn-new").onclick = showTitle;
+  }
+
+  /* ---------------- Partage ---------------- */
+
+  function shareUrl() {
+    const canonical = document.querySelector('link[rel="canonical"]');
+    return /^https?:/.test(location.protocol) ? location.origin + location.pathname : canonical.href;
+  }
+
+  function shareText(e) {
+    const f = S.civ === "F";
+    const pct = n => n.toFixed(1).replace(".", ",") + " %";
+    const title = el("div", null, fmt(e.title)).textContent;
+    let score;
+    if (S.round2) {
+      score = S.round2.you > 50
+        ? `Élu${f ? "e" : ""} ${f ? "présidente" : "président"} avec ${pct(S.round2.you)} au second tour.`
+        : `Battu${f ? "e" : ""} au second tour avec ${pct(S.round2.you)}.`;
+    } else if (S.round1 && S.round1.rank <= 2) {
+      score = `Qualifié${f ? "e" : ""} pour le second tour avec ${pct(S.round1.you)}… avant que tout ne déraille.`;
+    } else if (S.round1) {
+      score = `${S.round1.rank}e au premier tour avec ${pct(S.round1.you)}.`;
+    } else {
+      score = S.act === 0 ? `Campagne stoppée avant le premier tour (${S.parr} parrainages).` : "Campagne stoppée avant le premier tour.";
+    }
+    return [
+      `${e.emoji} Objectif Élysée — ${title}`,
+      score,
+      `Boussole morale : ${moralLabel(S.integ).label} · ${S.decisions} décisions`,
+      "Et vous, jusqu’où irez-vous pour gagner ?"
+    ].join("\n");
+  }
+
+  function setupShare(e) {
+    const text = shareText(e);
+    const url = shareUrl();
+    const t = encodeURIComponent(text);
+    const u = encodeURIComponent(url);
+    document.getElementById("share-x").href = `https://twitter.com/intent/tweet?text=${t}&url=${u}`;
+    document.getElementById("share-wa").href = `https://wa.me/?text=${encodeURIComponent(text + "\n" + url)}`;
+    document.getElementById("share-fb").href = `https://www.facebook.com/sharer/sharer.php?u=${u}`;
+
+    const btn = document.getElementById("btn-share");
+    btn.onclick = async () => {
+      if (navigator.share) {
+        try { await navigator.share({ title: "Objectif Élysée", text, url }); } catch (_) {}
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text + "\n" + url);
+        btn.textContent = "✅ Résultat copié — collez-le où vous voulez !";
+      } catch (_) {
+        btn.textContent = "Copie impossible — utilisez les liens ci-dessous";
+      }
+      setTimeout(() => (btn.textContent = "📣 Partager mon résultat"), 2500);
+    };
   }
 
   document.addEventListener("keydown", e => {

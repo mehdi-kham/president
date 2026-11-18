@@ -427,6 +427,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .recap-grid b { font-size: 14px; }
 .recap-grid b.badge { align-self: flex-start; }
 .ending-actions { display: flex; justify-content: center; gap: 12px; margin-top: 28px; }
+.share-box { margin-top: 20px; text-align: center; }
+.btn-share { width: 100%; background: var(--green); color: #06210f; font-weight: 800; box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25); }
+.btn-share:hover { background: #2fd46b; }
+.share-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13.5px; }
+.share-links a { color: var(--muted); text-decoration: none; }
+.share-links a:hover { color: var(--text); text-decoration: underline; }
 
 /* ---------------- Responsive ---------------- */
 
