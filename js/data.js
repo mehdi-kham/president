@@ -37,7 +37,7 @@ const ARCHETYPES = {
     minus: "Clivant, ton jugé agressif, rejet des milieux économiques",
     challenge: "Transformer la ferveur de la jeunesse en bulletins sans effrayer les modérés.",
     stats: { sondages: 54, tresorerie: 45, cohesion: 64, credibilite: 40 },
-    parrainages: 370,
+    parrainages: 410,
     mods: { sondages: { pos: 1.2 }, credibilite: { neg: 1.25 } },
     modsDesc: ["Gains de sondages amplifiés (vague jeune)", "Pertes de crédibilité amplifiées"]
   },
@@ -51,7 +51,7 @@ const ARCHETYPES = {
     minus: "Dérapages racistes à répétition dans le mouvement, plafond de verre",
     challenge: "Dédiaboliser le mouvement sans perdre la base historique.",
     stats: { sondages: 60, tresorerie: 40, cohesion: 58, credibilite: 34 },
-    parrainages: 330,
+    parrainages: 400,
     scandale: 15,
     round2: -4,
     mods: { credibilite: { neg: 1.3 } },
